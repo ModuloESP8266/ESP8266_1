@@ -8,17 +8,25 @@ const char* ssid = "Consola";
 const char* password = "tyrrenal";
 
 //LED on ESP8266 GPIO2
-const int lightPin = 2;
+const int light1= 0;
+const int light2= 2;
+const int int1= 12;
+const int int2= 14;
 
-char* lightTopic = "/test/light1";
+char* lightTopic = "prueba/light1";
+char* lightTopic2 = "prueba/light2";
 
 
 
 void setup() {
   //initialize the light as an output and set to LOW (off)
-  pinMode(lightPin, OUTPUT);
+  pinMode(light1, OUTPUT);
+  pinMode(light2, OUTPUT);
+  pinMode(int1, INPUT);
+  pinMode(int2, INPUT);
   
-  digitalWrite(lightPin, LOW);
+  digitalWrite(light1, LOW);
+  digitalWrite(light2, LOW);
     delay(500);
   //start the serial line for debugging
   Serial.begin(115200);
@@ -26,6 +34,7 @@ void setup() {
 
 
   //start wifi subsystem
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   //attempt to connect to the WIFI network and then connect to the MQTT server
   reconnect();
@@ -38,6 +47,7 @@ void setup() {
 WiFiClient wifiClient;
 
 PubSubClient client(MQTT_SERVER, 1883, callback, wifiClient);
+
 
 void loop(){
 
@@ -62,17 +72,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Topic: ");
   Serial.println(topicStr);
 
+  
+
   //turn the light on if the payload is '1' and publish to the MQTT server a confirmation message
   if(payload[0] == '1'){
-    digitalWrite(lightPin, HIGH);
-    client.publish("/test/confirm", "Light On");
+    digitalWrite(light1, HIGH);
+    client.publish("prueba/light1/confirm", "Light1 On");
 
   }
 
   //turn the light off if the payload is '0' and publish to the MQTT server a confirmation message
   else if (payload[0] == '0'){
-    digitalWrite(lightPin, LOW);
-    client.publish("/test/confirm", "Light Off");
+    digitalWrite(light1, LOW);
+    client.publish("prueba/light1/confirm", "Light1 Off");
   }
 
 }
@@ -105,21 +117,22 @@ void reconnect() {
   if(WiFi.status() == WL_CONNECTED){
   // Loop until we're reconnected to the MQTT server
     while (!client.connected()) {
-      Serial.print("Attempting MQTT connection...");
+      Serial.println("Attempting MQTT connection...");
 
       // Generate client name based on MAC address and last 8 bits of microsecond counter
       String clientName;
-      String user="diego";
-      String pass="24305314";
+      
       clientName += "esp8266-";
       uint8_t mac[6];
       WiFi.macAddress(mac);
       clientName += macToStr(mac);
+       Serial.println(clientName);
 
       //if connected, subscribe to the topic(s) we want to be notified about
-      if (client.connect((char*) clientName.c_str()),user,pass) {
+      if (client.connect((char*) clientName.c_str(),"diego","24305314")){//,(char*)"diego",(char*)"24305314") {
         Serial.print("\tMTQQ Connected");
         client.subscribe(lightTopic);
+        client.subscribe(lightTopic2);
       }
 
       //otherwise print failed for debugging
