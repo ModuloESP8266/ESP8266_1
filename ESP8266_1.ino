@@ -3,9 +3,9 @@
 
 
 //EDIT THESE LINES TO MATCH YOUR SETUP
-#define MQTT_SERVER "idirect.dlinkddns.com"
-const char* ssid = "Consola";
-const char* password = "tyrrenal";
+#define MQTT_SERVER "192.168.0.106"
+const char* ssid = "Red Virtual 2";
+const char* password = "2410meridian";
 
 //LED on ESP8266 GPIO2
 const int light1= 0;
@@ -25,8 +25,8 @@ void setup() {
   pinMode(int1, INPUT);
   pinMode(int2, INPUT);
   
-  digitalWrite(light1, LOW);
-  digitalWrite(light2, LOW);
+  digitalWrite(light1, HIGH);
+  digitalWrite(light2, HIGH);
     delay(500);
   //start the serial line for debugging
   Serial.begin(115200);
@@ -129,8 +129,8 @@ void reconnect() {
        Serial.println(clientName);
 
       //if connected, subscribe to the topic(s) we want to be notified about
-      if (client.connect((char*) clientName.c_str(),"diego","24305314")){//,(char*)"diego",(char*)"24305314") {
-        Serial.print("\tMTQQ Connected");
+      if (client.connect((char*) clientName.c_str(),"diego","24305314")){
+        Serial.print("MTQQ Connected");
         client.subscribe(lightTopic);
         client.subscribe(lightTopic2);
       }
