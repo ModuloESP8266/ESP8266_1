@@ -8,9 +8,9 @@
 #define MQTT_SERVER "192.168.0.106"
 #define MQTT_SERVER_WAN "idirect.dlinkddns.com"
 
-int pinDHT11 = 14;
+/*int pinDHT11 = 14;
 SimpleDHT11 dht11;
-
+*/
 
 byte temperature = 0;
 byte humidity = 0;
@@ -18,8 +18,8 @@ byte humidity = 0;
 //LED on ESP8266 GPIO2
 const int light1= 0;
 const int light2= 2;
-const int int1= 12; // interruptor 1
-//const int int2= 14;  // interruptor 2
+const int Entrada_1= 12; // interruptor 1
+const int Entrada_2= 14;  // interruptor 2
 
 
 // WIFI CASA
@@ -30,9 +30,7 @@ const char* password = "2410meridian";
 
 const char* ssid_1 = "Consola";
 const char* password_1 = "tyrrenal";
-
-
-
+///    MQTT
 char* lightTopic = "prueba/light1";
 char* lightTopic2 = "prueba/light2";
 
@@ -40,6 +38,12 @@ char* lightTopic2 = "prueba/light2";
 volatile int contador = 0;   // Somos de lo mas obedientes
 int n = contador ;
 long T0 = 0 ;  // Variable global para tiempo
+
+volatile int contador2 = 0;   // Somos de lo mas obedientes
+int n2 = contador2 ;
+long T02 = 0 ;  // Variable global para tiempo
+
+
 
 void ServicioBoton()
    {
@@ -49,70 +53,58 @@ void ServicioBoton()
           }
     }
 
+    void ServicioBoton2()
+   {
+       if ( millis() > T02  + 250)
+          {   contador2++ ;
+              T02 = millis();
+          }
+    }
+
 ///////////////// fin antirebote //////////////////
-
-
-void toggle1() {
- // detachInterrupt(int1);
-  static int state = 0;
-  state = !state;
-  digitalWrite(light1, state);
-//  attachInterrupt(int1, toggle1, CHANGE);
-}
-
-void toggle2() {
- // detachInterrupt(int2);
-  static int state = 0;
-  state = !state;
-  digitalWrite(light2, state);
- // attachInterrupt(int2, toggle2, CHANGE);
-}
 
 
 
 WiFiClient wifiClient;
 WiFiClientSecure wifiClientSecure;
 
-PubSubClient client(MQTT_SERVER, 1883, callback, wifiClient);
+//PubSubClient client(MQTT_SERVER, 1883, callback, wifiClient);
+PubSubClient client(MQTT_SERVER_WAN, 1883, callback, wifiClient);
 
 void setup() {
- 
-
   
   //initialize the light as an output and set to LOW (off)
   pinMode(light1, OUTPUT);
   pinMode(light2, OUTPUT);
   
-  pinMode(int1, INPUT);
-//  pinMode(int2, INPUT);
+  pinMode(Entrada_1, INPUT);
+  pinMode(Entrada_2, INPUT);
   
   digitalWrite(light1, HIGH);
-  digitalWrite(light2, LOW);
+  digitalWrite(light2, HIGH);
   
   delay(200);
   //start the serial line for debugging
   Serial.begin(115200);
    //start wifi subsystem
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  //WiFi.begin(ssid, password);
+  WiFi.begin(ssid_1, password_1);
   //attempt to connect to the WIFI network and then connect to the MQTT server
   reconnect();
 
   
-  attachInterrupt(int1, toggle1, CHANGE);
- // attachInterrupt(int2, ServicioBoton, CHANGE);
+   attachInterrupt( Entrada_1, ServicioBoton, CHANGE);
+   attachInterrupt( Entrada_2, ServicioBoton2, CHANGE);
   //wait a bit before starting the main loop
   delay(250);
  
- if (dht11.read(pinDHT11, &temperature, &humidity, NULL)) {
+/* if (dht11.read(pinDHT11, &temperature, &humidity, NULL)) {
     Serial.print("Read DHT11 failed.");
   }
-  
+*/  
   Serial.print((int)temperature); Serial.println(" *C, "); 
   Serial.print((int)humidity); Serial.println(" %");
-
-  client.publish("prueba/light1/confirm", "Light1 On");
-
   
 }
 
@@ -127,6 +119,25 @@ void loop(){
 
   //MUST delay to allow ESP8266 WIFI functions to run
   delay(10); 
+
+ if (n != contador)
+           {   //Serial.println(contador);
+               n = contador ;
+               digitalWrite(light1,!digitalRead(light1));
+               if(digitalRead(light1)){client.publish("prueba/light1/confirm", "Light1 On");}
+               else{client.publish("prueba/light1/confirm", "Light1 Off");}
+           
+           }
+if (n2 != contador2)
+           {   //Serial.println(contador);
+               n2 = contador2 ;
+               digitalWrite(light2,!digitalRead(light2));
+               if(digitalRead(light2)){client.publish("prueba/light2/confirm", "Light2 On");}
+               else{client.publish("prueba/light2/confirm", "Light2 Off");}
+           
+           }
+  
+  
 }
 
 
@@ -140,25 +151,38 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Topic: ");
   Serial.println(topicStr);
 
-  
+   if(topicStr == lightTopic){
 
-  //turn the light on if the payload is '1' and publish to the MQTT server a confirmation message
-  if(payload[0] == '1'){
-    digitalWrite(light1, HIGH);
-    client.publish("prueba/light1/confirm", "Light1 On");
+      //turn the light on if the payload is '1' and publish to the MQTT server a confirmation message
+        if(payload[0] == '1'){
+          digitalWrite(light1, HIGH);
+          client.publish("prueba/light1/confirm", "Light1 On");
+          }
+      //turn the light off if the payload is '0' and publish to the MQTT server a confirmation message
+        else if (payload[0] == '0'){
+          digitalWrite(light1, LOW);
+          client.publish("prueba/light1/confirm", "Light1 Off");
+        }
+   }
+    if(topicStr == lightTopic2){
 
-  }
+       //turn the light on if the payload is '1' and publish to the MQTT server a confirmation message
+        if(payload[0] == '1'){
+          digitalWrite(light2, HIGH);
+          client.publish("prueba/light2/confirm", "Light2 On");
+          }
+      //turn the light off if the payload is '0' and publish to the MQTT server a confirmation message
+        else if (payload[0] == '0'){
+          digitalWrite(light2, LOW);
+          client.publish("prueba/light2/confirm", "Light2 Off");
+        }
 
-  //turn the light off if the payload is '0' and publish to the MQTT server a confirmation message
-  else if (payload[0] == '0'){
-    digitalWrite(light1, LOW);
-    client.publish("prueba/light1/confirm", "Light1 Off");
-  }
-
+      
+    }
 }
 
 void reconnect() {
-
+ int c=0;
   //attempt to connect to the wifi if connection is lost
   if(WiFi.status() != WL_CONNECTED){
     //debug printing
@@ -169,7 +193,8 @@ void reconnect() {
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
       Serial.print(".");
-    }
+      c++;
+   }
 
     //print out some more debug once connected
     Serial.println("");
