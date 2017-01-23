@@ -1,52 +1,120 @@
 #include <PubSubClient.h>
 #include <ESP8266WiFi.h>
+#include <EEPROM.h>
+#include <SimpleDHT.h>
 
-
+ 
 //EDIT THESE LINES TO MATCH YOUR SETUP
 #define MQTT_SERVER "192.168.0.106"
-const char* ssid = "Red Virtual 2";
-const char* password = "2410meridian";
+#define MQTT_SERVER_WAN "idirect.dlinkddns.com"
+
+int pinDHT11 = 14;
+SimpleDHT11 dht11;
+
+
+byte temperature = 0;
+byte humidity = 0;
 
 //LED on ESP8266 GPIO2
 const int light1= 0;
 const int light2= 2;
-const int int1= 12;
-const int int2= 14;
+const int int1= 12; // interruptor 1
+//const int int2= 14;  // interruptor 2
+
+
+// WIFI CASA
+const char* ssid = "Red Virtual 2";
+const char* password = "2410meridian";
+
+/// WIFI ETB
+
+const char* ssid_1 = "Consola";
+const char* password_1 = "tyrrenal";
+
+
 
 char* lightTopic = "prueba/light1";
 char* lightTopic2 = "prueba/light2";
 
+/////////// antirebote /////////////
+volatile int contador = 0;   // Somos de lo mas obedientes
+int n = contador ;
+long T0 = 0 ;  // Variable global para tiempo
 
+void ServicioBoton()
+   {
+       if ( millis() > T0  + 250)
+          {   contador++ ;
+              T0 = millis();
+          }
+    }
+
+///////////////// fin antirebote //////////////////
+
+
+void toggle1() {
+ // detachInterrupt(int1);
+  static int state = 0;
+  state = !state;
+  digitalWrite(light1, state);
+//  attachInterrupt(int1, toggle1, CHANGE);
+}
+
+void toggle2() {
+ // detachInterrupt(int2);
+  static int state = 0;
+  state = !state;
+  digitalWrite(light2, state);
+ // attachInterrupt(int2, toggle2, CHANGE);
+}
+
+
+
+WiFiClient wifiClient;
+WiFiClientSecure wifiClientSecure;
+
+PubSubClient client(MQTT_SERVER, 1883, callback, wifiClient);
 
 void setup() {
+ 
+
+  
   //initialize the light as an output and set to LOW (off)
   pinMode(light1, OUTPUT);
   pinMode(light2, OUTPUT);
+  
   pinMode(int1, INPUT);
-  pinMode(int2, INPUT);
+//  pinMode(int2, INPUT);
   
   digitalWrite(light1, HIGH);
-  digitalWrite(light2, HIGH);
-    delay(500);
+  digitalWrite(light2, LOW);
+  
+  delay(200);
   //start the serial line for debugging
   Serial.begin(115200);
- 
-
-
-  //start wifi subsystem
+   //start wifi subsystem
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   //attempt to connect to the WIFI network and then connect to the MQTT server
   reconnect();
 
+  
+  attachInterrupt(int1, toggle1, CHANGE);
+ // attachInterrupt(int2, ServicioBoton, CHANGE);
   //wait a bit before starting the main loop
-      delay(2000);
+  delay(250);
+ 
+ if (dht11.read(pinDHT11, &temperature, &humidity, NULL)) {
+    Serial.print("Read DHT11 failed.");
+  }
+  
+  Serial.print((int)temperature); Serial.println(" *C, "); 
+  Serial.print((int)humidity); Serial.println(" %");
+
+  client.publish("prueba/light1/confirm", "Light1 On");
+
+  
 }
-
-
-WiFiClient wifiClient;
-
-PubSubClient client(MQTT_SERVER, 1883, callback, wifiClient);
 
 
 void loop(){
@@ -89,9 +157,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 }
 
-
-
-
 void reconnect() {
 
   //attempt to connect to the wifi if connection is lost
@@ -130,13 +195,13 @@ void reconnect() {
 
       //if connected, subscribe to the topic(s) we want to be notified about
       if (client.connect((char*) clientName.c_str(),"diego","24305314")){
-        Serial.print("MTQQ Connected");
+        Serial.println("MTQQ Connected");
         client.subscribe(lightTopic);
         client.subscribe(lightTopic2);
       }
 
       //otherwise print failed for debugging
-      else{Serial.println("\tFailed."); abort();}
+      else{Serial.println("Failed."); abort();}
     }
   }
 }
