@@ -66,10 +66,10 @@ void ServicioBoton()
 
 
 WiFiClient wifiClient;
-WiFiClientSecure wifiClientSecure;
 
-//PubSubClient client(MQTT_SERVER, 1883, callback, wifiClient);
-PubSubClient client(MQTT_SERVER_WAN, 1883, callback, wifiClient);
+
+PubSubClient client(MQTT_SERVER, 1883, callback, wifiClient);
+//PubSubClient client(MQTT_SERVER_WAN, 1883, callback, wifiClient);
 
 void setup() {
   
@@ -88,8 +88,8 @@ void setup() {
   Serial.begin(115200);
    //start wifi subsystem
   WiFi.mode(WIFI_STA);
-  //WiFi.begin(ssid, password);
-  WiFi.begin(ssid_1, password_1);
+  WiFi.begin(ssid, password);
+  //WiFi.begin(ssid_1, password_1);
   //attempt to connect to the WIFI network and then connect to the MQTT server
   reconnect();
 
